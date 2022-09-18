@@ -1,15 +1,15 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { getPackageJson } from './http.mock'
+import { getNpmPackageJson } from '@/utils/api'
+import semver from 'semver'
+import { isEmpty } from 'lodash'
 
 export type PackageVersion = string
-export type PackageSemverVersion = string
 export type PackageName = string
 export type PackageNameWithVersion = string
-export type PackageNameWithSemverVersion = string
 
 export interface PackageDependencies {
-  [packageName: PackageName]: PackageSemverVersion
+  [packageName: PackageName]: PackageVersion
 }
 
 export interface PackageJson {
@@ -21,17 +21,19 @@ export interface PackageJson {
 }
 
 export interface DependencyMap {
-  [packageName: PackageNameWithSemverVersion]: PackageJson
+  [packageName: PackageVersion]: PackageJson
 }
 
-export const useDependencies = defineStore('packages', () => {
+export const useDependenciesStore = defineStore('packages', () => {
   const allDependencies = ref<DependencyMap>({})
+
+  function reset() {
+    allDependencies.value = {}
+  }
 
   function analysisPackageJson(
     packageJson: PackageJson,
-    packageNameWithVersion?:
-      | PackageNameWithSemverVersion
-      | PackageNameWithVersion
+    packageNameWithVersion?: PackageNameWithVersion
   ) {
     const { name, version, dependencies, devDependencies, peerDependencies } =
       packageJson
@@ -47,27 +49,57 @@ export const useDependencies = defineStore('packages', () => {
   }
 
   async function analysisPackageDeep(
-    packageName:
-      | PackageNameWithSemverVersion
-      | PackageNameWithVersion
-      | PackageName
-    // TODO {name: '', version: version | http | github | git}
+    packageName: PackageName,
+    version?: PackageVersion
   ) {
-    // TODO 根据不同的 version 类型，获取对应的url
-    // TODO 如果 allDependencies 有匹配（~1.2.3 === >=1.2.3 且 < 2.0.0）的版本，跳过请求，直接复制该匹配版本的值
+    // TODO 支持 version 为 url 或 git
+    let packageJson: PackageJson | undefined
 
-    const packageJson = await getPackageJson(packageName)
-    console.log('analysisPackageDeep', packageName, packageJson)
-    analysisPackageJson(packageJson, packageName)
+    // 处理 packageName
+    if (/^@?.+@.+/g.test(packageName)) {
+      const array = packageName.split('@')
+      packageName = array.length === 3 ? `@${array[1]}` : array[0]
+      version = array.length === 3 ? array[2] : array[1]
+    }
 
-    if (Object.keys(packageJson.dependencies).length) {
+    // 如果在 allDependencies 找到适配版本，则结束处理
+    if (
+      version &&
+      !!semver.maxSatisfying(
+        Object.values(allDependencies.value)
+          .filter((value) => value?.name === packageName)
+          .map((value) => {
+            return value.version
+          }),
+        version
+      )
+    ) {
+      return
+    }
+
+    // 无 version 或 version 符合 semver 规则，通过 npm registry 获取 package.json
+    if (!version || semver.valid(version) || semver.validRange(version)) {
+      packageJson = await getNpmPackageJson({
+        packageName,
+        version: version || 'latest',
+      })
+      if (packageJson) {
+        analysisPackageJson(
+          packageJson,
+          `${packageName}@${version || 'latest'}`
+        )
+      }
+    }
+
+    // 递归处理非空 dependencies
+    if (packageJson && !isEmpty(packageJson.dependencies)) {
       const list = Object.entries(packageJson.dependencies)
       for (let i = 0; i < list.length; i++) {
         const [_name, _version] = list[i]
-        await analysisPackageDeep(`${_name}@${_version}`)
+        await analysisPackageDeep(_name, _version)
       }
     }
   }
 
-  return { allDependencies, analysisPackageJson, analysisPackageDeep }
+  return { allDependencies, reset, analysisPackageJson, analysisPackageDeep }
 })

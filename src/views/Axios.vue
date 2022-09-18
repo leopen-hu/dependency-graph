@@ -5,28 +5,26 @@
       <el-card class="box-card">
         <template #header>
           <div class="card-header">
-            <el-input
-              v-model="input1"
-              placeholder="Please input"
-              @change="getPackageInfo"
-            >
+            <el-input v-model="input1" placeholder="Please input">
               <template #prepend>Npm：</template>
             </el-input>
 
-            <el-button class="button" type="text" @click="getPackageInfo"
+            <el-button class="button" type="primary" @click="getPackageInfo"
               >点击获取npm包信息
             </el-button>
           </div>
         </template>
         <div class="info-list-box" v-loading="loading">
-          <div class="text item" v-if="packageInfo?.name">
+          <!-- <div class="text item" v-if="packageInfo?.name">
             name: {{ packageInfo?.name }}
           </div>
           <div class="text item" v-if="packageInfo?.version">
             version: {{ packageInfo?.version }}
-          </div>
-          <div class="text item" v-if="packageInfo?.dependencies">
-            dependencies: {{ packageInfo?.dependencies }}
+          </div> -->
+          <div class="text item" v-if="allDependencies">
+            <div v-for="key in Object.keys(allDependencies)" :key="key">
+              {{ key }}
+            </div>
           </div>
         </div>
       </el-card>
@@ -35,8 +33,10 @@
 </template>
 
 <script lang="ts">
+import { useDependenciesStore } from '@/stores/dependencies'
+import { storeToRefs } from 'pinia'
 import { defineComponent, ref, type Ref } from 'vue'
-import axios from '../utils/axios'
+// import axios from '../utils/axios'
 
 export default defineComponent({
   name: 'AxiosPage',
@@ -44,27 +44,20 @@ export default defineComponent({
     const input1 = ref('')
     const packageInfo: Ref = ref(null)
     const loading = ref(false)
+    const useDependencies = useDependenciesStore()
+    const { allDependencies } = storeToRefs(useDependencies)
+    const { reset, analysisPackageDeep } = useDependencies
 
     const getPackageInfo = () => {
-      loading.value = true
-      console.log('user input', input1.value)
-      axios
-        .get(input1.value + '/package.json')
-        .then((response) => {
-          console.log('response: ', response.data)
-          packageInfo.value = response.data
-          loading.value = false
-        })
-        .catch((error) => {
-          loading.value = false
-          console.error(error)
-        })
+      reset()
+      analysisPackageDeep(input1.value)
     }
 
     return {
       input1,
       packageInfo,
       loading,
+      allDependencies,
       getPackageInfo,
     }
   },
