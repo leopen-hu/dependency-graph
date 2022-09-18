@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, expect } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useDependencies } from '../../dependencies'
+import { useDependenciesStore } from '../../dependencies'
 import { packageJson, piniaPackageJson, result, result2 } from './package.mock'
 
 describe('测试 package.json 的分析函数', () => {
@@ -12,13 +12,13 @@ describe('测试 package.json 的分析函数', () => {
   })
 
   it('依赖分析，返回正确分析结果', () => {
-    const { allDependencies, analysisPackageJson } = useDependencies()
+    const { allDependencies, analysisPackageJson } = useDependenciesStore()
     analysisPackageJson(packageJson)
     expect(allDependencies).toStrictEqual(result)
   })
 
   it('第二层依赖分析，返回正确分析结果', () => {
-    const { allDependencies, analysisPackageJson } = useDependencies()
+    const { allDependencies, analysisPackageJson } = useDependenciesStore()
     analysisPackageJson(packageJson)
     expect(allDependencies).toStrictEqual(result)
     analysisPackageJson(piniaPackageJson, 'pinia@^2.0.21')
@@ -26,7 +26,7 @@ describe('测试 package.json 的分析函数', () => {
   })
 
   // it('递归调用，返回正确的分析结果', async () => {
-  //   const { allDependencies, analysisPackageDeep } = useDependencies()
+  //   const { allDependencies, analysisPackageDeep } = useDependenciesStore()
   //   await analysisPackageDeep('packageOne')
   //   console.log(allDependencies)
   //   expect(Object.keys(allDependencies).length).greaterThan(2)
