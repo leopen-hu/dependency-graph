@@ -573,6 +573,11 @@
   resolved "https://registry.npmmirror.com/@types/node/-/node-14.18.29.tgz"
   integrity sha512-LhF+9fbIX4iPzhsRLpK5H7iPdvW8L4IwGciXQIOEcuF62+9nw/VQVsOViAOOGxY3OlOKGLFv0sWwJXdwQeTn6A==
 
+"@types/semver@^7.3.12":
+  version "7.3.12"
+  resolved "https://registry.npmmirror.com/@types/semver/-/semver-7.3.12.tgz#920447fdd78d76b19de0438b7f60df3c4a80bf1c"
+  integrity sha512-WwA1MW0++RfXmCr12xeYOOC5baSC9mSb0ZqCquFzKhcoF4TvHu5MKOuXsncgZcpVFhB1pXd5hZmM0ryAoCp12A==
+
 "@types/sinonjs__fake-timers@8.1.1":
   version "8.1.1"
   resolved "https://registry.npmmirror.com/@types/sinonjs__fake-timers/-/sinonjs__fake-timers-8.1.1.tgz"
