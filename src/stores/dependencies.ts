@@ -51,7 +51,11 @@ export const useDependencies = defineStore('packages', () => {
       | PackageNameWithSemverVersion
       | PackageNameWithVersion
       | PackageName
+    // TODO {name: '', version: version | http | github | git}
   ) {
+    // TODO 根据不同的 version 类型，获取对应的url
+    // TODO 如果 allDependencies 有匹配（~1.2.3 === >=1.2.3 且 < 2.0.0）的版本，跳过请求，直接复制该匹配版本的值
+
     const packageJson = await getPackageJson(packageName)
     console.log('analysisPackageDeep', packageName, packageJson)
     analysisPackageJson(packageJson, packageName)
