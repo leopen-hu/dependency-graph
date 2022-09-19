@@ -86,7 +86,7 @@ export const useDependenciesStore = defineStore('packages', () => {
       if (packageJson) {
         analysisPackageJson(
           packageJson,
-          `${packageName}@${version || 'latest'}`
+          `${packageName}@${version || packageJson.version}`
         )
       }
     }
