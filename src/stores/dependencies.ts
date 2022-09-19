@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getNpmPackageJson } from '@/utils/api'
 import semver from 'semver'
