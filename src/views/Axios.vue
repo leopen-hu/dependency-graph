@@ -2,29 +2,33 @@
   <div class="axios-container page-container">
     <div class="page-title">Axios Test Page</div>
     <div class="user-info-container">
-      <el-card class="box-card">
+      <el-card>
         <template #header>
           <div class="card-header">
-            <el-input v-model="input1" placeholder="Please input">
-              <template #prepend>Npm：</template>
+            <el-input
+              v-model="packageName"
+              v-loading="loading"
+              :disabled="loading"
+              @input="onInput"
+              @change="getPackageInfo"
+              placeholder="Please input"
+            >
+              <template #prepend>Package</template>
             </el-input>
-
-            <el-button class="button" type="primary" @click="getPackageInfo"
-              >点击获取npm包信息
-            </el-button>
+            <el-select-v2
+              v-model="packageVersion"
+              :options="options"
+              :disabled="loading"
+              @change="onSelect"
+              filterable
+              placeholder="Please select"
+              style="width: 300px"
+            />
           </div>
         </template>
-        <div class="info-list-box" v-loading="loading">
-          <!-- <div class="text item" v-if="packageInfo?.name">
-            name: {{ packageInfo?.name }}
-          </div>
-          <div class="text item" v-if="packageInfo?.version">
-            version: {{ packageInfo?.version }}
-          </div> -->
-          <div class="text item" v-if="allDependencies">
-            <div v-for="key in Object.keys(allDependencies)" :key="key">
-              {{ key }}
-            </div>
+        <div class="text item" v-if="allDependencies">
+          <div v-for="key in Object.keys(allDependencies)" :key="key">
+            {{ key }}
           </div>
         </div>
       </el-card>
@@ -35,30 +39,78 @@
 <script lang="ts">
 import { useDependenciesStore } from '@/stores/dependencies'
 import { storeToRefs } from 'pinia'
-import { defineComponent, ref, type Ref } from 'vue'
+import { defineComponent, ref, type Ref, computed, watch } from 'vue'
 // import axios from '../utils/axios'
 
 export default defineComponent({
   name: 'AxiosPage',
   setup() {
-    const input1 = ref('')
+    const packageName = ref<string>()
+    const packageVersion = ref<string>()
     const packageInfo: Ref = ref(null)
     const loading = ref(false)
     const useDependencies = useDependenciesStore()
-    const { allDependencies } = storeToRefs(useDependencies)
+    const { allDependencies, versions, currentVersion, currentName } =
+      storeToRefs(useDependencies)
+    const options = computed(() =>
+      versions.value.map((version) => ({
+        label: version,
+        value: version,
+      }))
+    )
     const { reset, analysisPackageDeep } = useDependencies
 
-    const getPackageInfo = () => {
+    watch(
+      () => currentVersion?.value,
+      () => {
+        console.log('currentVersion', currentVersion?.value)
+        packageVersion.value = currentVersion?.value
+      }
+    )
+
+    watch(
+      () => currentName?.value,
+      () => {
+        packageName.value = currentName?.value
+      }
+    )
+
+    watch(
+      () => packageName.value,
+      () => {
+        reset()
+      }
+    )
+
+    const onInput = () => {
       reset()
-      analysisPackageDeep(input1.value)
+      packageVersion.value = undefined
+    }
+
+    const onSelect = () => {
+      reset()
+      getPackageInfo()
+    }
+
+    const getPackageInfo = async () => {
+      if (packageName.value) {
+        loading.value = true
+        await analysisPackageDeep(packageName.value, packageVersion.value)
+        loading.value = false
+      }
     }
 
     return {
-      input1,
+      packageName,
+      packageVersion,
       packageInfo,
       loading,
       allDependencies,
+      options,
       getPackageInfo,
+      reset,
+      onInput,
+      onSelect,
     }
   },
 })
@@ -92,6 +144,18 @@ export default defineComponent({
     .box-card {
       width: 480px;
     }
+  }
+  :global(.el-loading-mask) {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  :global(.el-loading-mask .el-loading-spinner) {
+    text-align: right;
+  }
+
+  :global(.el-loading-mask .circular) {
+    width: 24px;
+    margin-right: 12px;
   }
 }
 </style>
