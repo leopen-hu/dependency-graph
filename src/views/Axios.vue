@@ -52,13 +52,14 @@ export default defineComponent({
     const useDependencies = useDependenciesStore()
     const { allDependencies, versions, currentVersion, currentName } =
       storeToRefs(useDependencies)
+    const { analysisPackageDeep } = useDependencies
+
     const options = computed(() =>
       versions.value.map((version) => ({
         label: version,
         value: version,
       }))
     )
-    const { reset, analysisPackageDeep } = useDependencies
 
     watch(
       () => currentVersion?.value,
@@ -74,20 +75,14 @@ export default defineComponent({
       }
     )
 
-    watch(
-      () => packageName.value,
-      () => {
-        reset()
-      }
-    )
-
     const onInput = () => {
-      reset()
+      allDependencies.value = {}
+      versions.value = []
       packageVersion.value = undefined
     }
 
     const onSelect = () => {
-      reset()
+      allDependencies.value = {}
       getPackageInfo()
     }
 
@@ -107,7 +102,6 @@ export default defineComponent({
       allDependencies,
       options,
       getPackageInfo,
-      reset,
       onInput,
       onSelect,
     }

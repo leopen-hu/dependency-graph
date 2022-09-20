@@ -39,11 +39,6 @@ export const useDependenciesStore = defineStore('packages', () => {
   const currentVersion = ref<string>()
   const currentName = ref<string>()
 
-  function reset() {
-    allDependencies.value = {}
-    versions.value = []
-  }
-
   async function analysisPackageDeep(
     inputPackageName: InputPackageName,
     inputVersion?: InputPackageVersion,
@@ -69,7 +64,7 @@ export const useDependenciesStore = defineStore('packages', () => {
       })
       // 记录 root
       if (root) {
-        versions.value = Object.keys(version)
+        versions.value = versions.value.length ? versions.value : [version]
         currentName.value = packageName
         currentVersion.value = version
       }
@@ -149,14 +144,15 @@ export const useDependenciesStore = defineStore('packages', () => {
     const { name, version, dependencies, devDependencies, peerDependencies } =
       packageJson
     const dependencyKey = packageName || name
-
-    allDependencies.value[dependencyKey] = {
+    const dependencyValue = {
       name,
       version,
       dependencies,
       devDependencies: devDependencies || {},
       peerDependencies: peerDependencies || {},
     }
+
+    allDependencies.value[dependencyKey] = dependencyValue
   }
 
   function processInputPackageName(packageName: InputPackageName) {
@@ -215,7 +211,6 @@ export const useDependenciesStore = defineStore('packages', () => {
     versions,
     currentVersion,
     currentName,
-    reset,
     analysisPackageDeep,
   }
 })
