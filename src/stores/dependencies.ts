@@ -11,14 +11,17 @@ import { isEmpty } from 'lodash'
 // TODO 支持 version 为 url 或 git
 export type PackageVersion = string // 1.0.0
 export type PackageVersionRange = string // ~1.0.0
+export type InputPackageVersion = PackageVersion | PackageVersionRange
 
 export type PackageName = string // vue @vue/compile
 export type PackageNameWithVersion = string // vue@3.0.0 @vue/compile@3.0.0
 export type PackageNameWithVersionRange = string // vue@^3.0.0 @vue/compile@^3.0.0
+export type InputPackageName =
+  | PackageName
+  | PackageNameWithVersion
+  | PackageNameWithVersionRange
 
-export interface PackageDependencies {
-  [packageName: PackageName]: PackageVersion
-}
+export type PackageDependencies = Record<PackageName, InputPackageVersion>
 
 export interface PackageJson {
   name: PackageName
@@ -28,12 +31,10 @@ export interface PackageJson {
   peerDependencies?: PackageDependencies
 }
 
-export interface DependencyMap {
-  [packageName: PackageVersion]: PackageJson
-}
+export type PackageJsonMap = Record<PackageVersion, PackageJson>
 
 export const useDependenciesStore = defineStore('packages', () => {
-  const allDependencies = ref<DependencyMap>({})
+  const allDependencies = ref<PackageJsonMap>({})
   const versions = ref<PackageVersion[]>([])
   const currentVersion = ref<string>()
   const currentName = ref<string>()
@@ -43,46 +44,18 @@ export const useDependenciesStore = defineStore('packages', () => {
     versions.value = []
   }
 
-  function analysisPackageJson(
-    packageJson: PackageJson,
-    packageNameWithVersion?: PackageNameWithVersion
-  ) {
-    const { name, version, dependencies, devDependencies, peerDependencies } =
-      packageJson
-    const dependencyKey = packageNameWithVersion || name
-
-    allDependencies.value[dependencyKey] = {
-      name,
-      version,
-      dependencies,
-      devDependencies: devDependencies || {},
-      peerDependencies: peerDependencies || {},
-    }
-  }
-
   async function analysisPackageDeep(
-    packageName:
-      | PackageName
-      | PackageNameWithVersion
-      | PackageNameWithVersionRange,
-    versionOrPath?: PackageVersion | PackageVersionRange,
-    first = true
+    inputPackageName: InputPackageName,
+    inputVersion?: InputPackageVersion,
+    root = true
   ) {
-    // 处理 packageName
-    const packageNameResult = processPackageName(packageName)
-    const { name: purePackageName } = packageNameResult
-    let { version, versionRange } = packageNameResult
-
-    // 处理 versionOrPath
-    if (versionOrPath) {
-      const versionResult = processVersionOrPath(versionOrPath)
-      versionRange = versionResult.versionRange
-      version = versionResult.version
-    }
+    const { packageName, version, versionRange } = processParams(
+      inputPackageName,
+      inputVersion
+    )
 
     // 如果在 allDependencies 找到适配版本，则结束处理
-    const versionOrRange = version || versionRange
-    if (versionOrRange && hasLoaded(purePackageName, versionOrRange)) {
+    if (inputVersion && hasLoaded(packageName, inputVersion)) {
       return
     }
 
@@ -91,32 +64,34 @@ export const useDependenciesStore = defineStore('packages', () => {
     // 有确定的 version，获取 package.json
     if (version) {
       packageJson = await getNpmPackageJson({
-        packageName,
+        packageName: inputPackageName,
         version: version,
       })
-      // 记录第一个包的所有类型
-      if (first) {
+      // 记录 root
+      if (root) {
         versions.value = Object.keys(version)
-        currentName.value = purePackageName
+        currentName.value = packageName
         currentVersion.value = version
       }
     }
 
-    if (!versionOrRange || versionRange) {
-      // versionRange 或无 versionOrRange
+    // 没有 version, 可被视为有 versionRange 或 两者皆无
+    // TODO 添加其他类型后需要修改此处
+    if (!version) {
       const { maxPackageJson, allVersions } =
         await getNpmVersionsAndMaxPackageJson({
-          packageName: purePackageName,
+          packageName: packageName,
           versionRange,
         })
 
-      // 记录第一个包的所有类型
-      if (first) {
+      // 记录 root
+      if (root) {
         versions.value = Object.keys(allVersions)
         currentVersion.value = maxPackageJson.version
-        currentName.value = purePackageName
+        currentName.value = packageName
       }
 
+      // TODO 缓存下载的所有依赖文件说明
       // setPackageVersions(purePackageName, allVersions)
       packageJson = maxPackageJson
     }
@@ -127,7 +102,7 @@ export const useDependenciesStore = defineStore('packages', () => {
 
     analysisPackageJson(
       packageJson,
-      `${purePackageName}@${versionRange || version || packageJson.version}`
+      `${packageName}@${versionRange || version || packageJson.version}`
     )
 
     // 递归处理非空 dependencies
@@ -140,60 +115,90 @@ export const useDependenciesStore = defineStore('packages', () => {
     }
   }
 
-  function processPackageName(
-    packageName:
-      | PackageName
-      | PackageNameWithVersion
-      | PackageNameWithVersionRange
+  function processParams(
+    inputPackageName: InputPackageName,
+    inputVersion?: InputPackageVersion
   ) {
-    const result: {
-      name: PackageName
+    let result: {
+      packageName: PackageName
       version?: PackageVersion
       versionRange?: PackageVersionRange
-    } = { name: packageName }
+    } = { packageName: inputPackageName }
+
+    // 处理 inputPackageName
+    const inputPrecessResult = processInputPackageName(inputPackageName)
+    result = { ...result, ...inputPrecessResult }
+
+    // 处理 inputVersion
+    if (inputVersion) {
+      const inputVersionResult = processInputPackageVersion(inputVersion)
+      result = { ...result, ...inputVersionResult }
+    }
+
+    return result
+  }
+
+  function hasLoaded(packageName: PackageName, version: InputPackageVersion) {
+    return !!semver.maxSatisfying(getLoadedVersions(packageName), version)
+  }
+
+  function analysisPackageJson(
+    packageJson: PackageJson,
+    packageName?: PackageNameWithVersion
+  ) {
+    const { name, version, dependencies, devDependencies, peerDependencies } =
+      packageJson
+    const dependencyKey = packageName || name
+
+    allDependencies.value[dependencyKey] = {
+      name,
+      version,
+      dependencies,
+      devDependencies: devDependencies || {},
+      peerDependencies: peerDependencies || {},
+    }
+  }
+
+  function processInputPackageName(packageName: InputPackageName) {
+    const result: {
+      packageName: PackageName
+      version?: PackageVersion
+      versionRange?: PackageVersionRange
+    } = { packageName }
     // 除去第一个字符串后不含有 "@"，表示不携带版本号
     if (!packageName.substring(1).includes('@')) {
-      result.name = packageName
+      result.packageName = packageName
       return result
     }
 
     // @vue/cli@3.0.0 => ['', 'vue/cli', '3.0.0']
     // vue@~3.0.0 => ['vue', '~3.0.0']
     const array = packageName.split('@')
-    result.name = array.length === 3 ? `@${array[1]}` : array[0]
+    result.packageName = array.length === 3 ? `@${array[1]}` : array[0]
     const tempVersion = array.length === 3 ? array[2] : array[1]
 
-    const { version, versionRange } = processVersionOrPath(tempVersion)
+    const { version, versionRange } = processInputPackageVersion(tempVersion)
     result.version = version
     result.versionRange = versionRange
 
     return result
   }
 
-  function processVersionOrPath(
-    versionOrPath: PackageVersion | PackageVersionRange
-  ) {
+  function processInputPackageVersion(inputVersion: InputPackageVersion) {
     const result: {
       version?: PackageVersion
       versionRange?: PackageVersionRange
     } = {}
 
-    if (semver.valid(versionOrPath)) {
-      result.version = versionOrPath
+    if (semver.valid(inputVersion)) {
+      result.version = inputVersion
     }
 
-    if (semver.validRange(versionOrPath)) {
-      result.versionRange = versionOrPath
+    if (semver.validRange(inputVersion)) {
+      result.versionRange = inputVersion
     }
 
     return result
-  }
-
-  function hasLoaded(
-    packageName: PackageName,
-    version: PackageVersion | PackageVersionRange
-  ) {
-    return !!semver.maxSatisfying(getLoadedVersions(packageName), version)
   }
 
   function getLoadedVersions(packageName: PackageName) {
