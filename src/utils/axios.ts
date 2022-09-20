@@ -1,5 +1,6 @@
 import Axios, { type AxiosInstance } from 'axios'
 import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 
 const baseURL = 'https://unpkg.com/'
 
@@ -35,10 +36,18 @@ axios.interceptors.response.use(
     if (error.response && error.response.data) {
       const code = error.response.status
       const msg = error.response.data.message
-      ElMessage.error(`Code: ${code}, Message: ${msg}`)
+      ElMessage({
+        showClose: true,
+        message: `Code: ${code}, Message: ${msg}`,
+        type: 'error',
+      })
       console.error(`[Axios Error]`, error.response)
     } else {
-      ElMessage.error(`${error}`)
+      ElMessage({
+        showClose: true,
+        message: `${error}`,
+        type: 'error',
+      })
     }
     return Promise.reject(error)
   }
