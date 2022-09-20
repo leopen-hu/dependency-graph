@@ -64,8 +64,8 @@ export const useDependenciesStore = defineStore('packages', () => {
     // 有确定的 version，获取 package.json
     if (version) {
       packageJson = await getNpmPackageJson({
-        packageName: inputPackageName,
-        version: version,
+        packageName,
+        version,
       })
       // 记录 root
       if (root) {
@@ -126,8 +126,8 @@ export const useDependenciesStore = defineStore('packages', () => {
     } = { packageName: inputPackageName }
 
     // 处理 inputPackageName
-    const inputPrecessResult = processInputPackageName(inputPackageName)
-    result = { ...result, ...inputPrecessResult }
+    const inputNameResult = processInputPackageName(inputPackageName)
+    result = { ...result, ...inputNameResult }
 
     // 处理 inputVersion
     if (inputVersion) {
@@ -192,6 +192,7 @@ export const useDependenciesStore = defineStore('packages', () => {
 
     if (semver.valid(inputVersion)) {
       result.version = inputVersion
+      return result
     }
 
     if (semver.validRange(inputVersion)) {
@@ -215,7 +216,6 @@ export const useDependenciesStore = defineStore('packages', () => {
     currentVersion,
     currentName,
     reset,
-    analysisPackageJson,
     analysisPackageDeep,
   }
 })
