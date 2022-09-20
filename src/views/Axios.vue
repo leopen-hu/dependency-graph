@@ -63,7 +63,6 @@ export default defineComponent({
     watch(
       () => currentVersion?.value,
       () => {
-        console.log('currentVersion', currentVersion?.value)
         packageVersion.value = currentVersion?.value
       }
     )
