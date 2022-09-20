@@ -27,34 +27,55 @@ export const getNpmPackageJson = async ({
   version: PackageVersion
   registry?: string
 }) => {
-  const response: { data: PackageJson } = await axios.get(
-    `${registry}/${packageName}/${version}`
-  )
-  return response.data
+  try {
+    const response: { data: PackageJson } = await axios.get(
+      `${registry}/${packageName}/${version}`
+    )
+    return response.data
+  } catch (e) {
+    console.error(e)
+    return {
+      name: packageName,
+      version,
+      dependencies: {},
+    }
+  }
 }
 
 export const getNpmVersionsAndMaxPackageJson = async ({
   packageName,
   versionRange,
-  registry = 'https://registry.npmjs.org',
+  registry = DEFAULT_REGISTRY,
 }: {
   packageName: PackageName
   versionRange?: PackageVersionRange
   registry?: string
 }) => {
-  const response: {
-    data: {
-      versions: Record<PackageVersion, PackageJson>
-      'dist-tags': Record<string, PackageVersion>
+  try {
+    const response: {
+      data: {
+        versions: Record<PackageVersion, PackageJson>
+        'dist-tags': Record<string, PackageVersion>
+      }
+    } = await axios.get(`${registry}/${packageName}`)
+
+    const { versions } = response.data
+    const maxVersionTag = 'latest'
+    const maxVersion =
+      (versionRange &&
+        semver.maxSatisfying(Object.keys(versions), versionRange)) ||
+      response.data['dist-tags'][maxVersionTag]
+
+    return { allVersions: versions, maxPackageJson: versions[maxVersion] }
+  } catch (e) {
+    console.error(e)
+    return {
+      allVersions: [],
+      maxPackageJson: {
+        name: packageName,
+        version: 'not found',
+        dependencies: {},
+      },
     }
-  } = await axios.get(`${registry}/${packageName}`)
-
-  const { versions } = response.data
-  const maxVersionTag = 'latest'
-  const maxVersion =
-    (versionRange &&
-      semver.maxSatisfying(Object.keys(versions), versionRange)) ||
-    response.data['dist-tags'][maxVersionTag]
-
-  return { allVersions: versions, maxPackageJson: versions[maxVersion] }
+  }
 }
