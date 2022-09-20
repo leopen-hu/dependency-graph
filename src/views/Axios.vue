@@ -1,8 +1,7 @@
 <template>
   <div class="axios-container page-container">
-    <div class="page-title">Axios Test Page</div>
-    <div class="user-info-container">
-      <el-card>
+    <div class="container">
+      <el-card class="card">
         <template #header>
           <div class="card-header">
             <el-input
@@ -26,11 +25,27 @@
             />
           </div>
         </template>
-        <div class="text item" v-if="allDependencies">
-          <div v-for="key in Object.keys(allDependencies)" :key="key">
-            {{ key }}
-          </div>
-        </div>
+        <el-tabs v-model="activeTab">
+          <el-tab-pane label="列表" name="list">
+            <ul v-if="allDependencies">
+              <li
+                class="text item"
+                v-for="key in Object.keys(allDependencies)"
+                :key="key"
+              >
+                {{ key }}
+              </li>
+            </ul>
+          </el-tab-pane>
+          <el-tab-pane label="树状图" name="tree">
+            <div
+              class="tree-container"
+              v-if="!!Object.keys(allDependencies).length"
+            >
+              <dependency-tree />
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </el-card>
     </div>
   </div>
@@ -39,7 +54,8 @@
 <script lang="ts">
 import { useDependenciesStore } from '@/stores/dependencies'
 import { storeToRefs } from 'pinia'
-import { defineComponent, ref, type Ref, computed, watch } from 'vue'
+import { defineComponent, ref, computed, watch } from 'vue'
+import DependencyTree from '@/components/DependencyTree.vue'
 // import axios from '../utils/axios'
 
 export default defineComponent({
@@ -47,7 +63,6 @@ export default defineComponent({
   setup() {
     const packageName = ref<string>()
     const packageVersion = ref<string>()
-    const packageInfo: Ref = ref(null)
     const loading = ref(false)
     const useDependencies = useDependenciesStore()
     const { allDependencies, versions, currentVersion, currentName } =
@@ -76,6 +91,7 @@ export default defineComponent({
     )
 
     const onInput = () => {
+      console.log(JSON.stringify(allDependencies.value))
       allDependencies.value = {}
       versions.value = []
       packageVersion.value = undefined
@@ -94,16 +110,22 @@ export default defineComponent({
       }
     }
 
+    const activeTab = ref('list')
+    // const onTabClick = (name: string) => {
+    //   activeTab.value = name
+    // }
+
     return {
       packageName,
       packageVersion,
-      packageInfo,
       loading,
       allDependencies,
       options,
       getPackageInfo,
       onInput,
       onSelect,
+      DependencyTree,
+      activeTab,
     }
   },
 })
@@ -111,10 +133,16 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .axios-container {
-  .user-info-container {
+  height: 80vh;
+  .container {
     display: 'flex';
     justify-content: 'center';
     width: 100%;
+    height: 100%;
+
+    .card {
+      height: 100%;
+    }
 
     .info-list-box {
       padding: 10px;
@@ -136,6 +164,10 @@ export default defineComponent({
 
     .box-card {
       width: 480px;
+    }
+
+    .tree-container {
+      padding-left: 12px;
     }
   }
   :global(.el-loading-mask) {
