@@ -26,7 +26,7 @@
           </div>
         </template>
         <el-tabs v-model="activeTab">
-          <el-tab-pane label="列表" name="list">
+          <el-tab-pane label="平铺列表" name="list">
             <ul v-if="allDependencies">
               <li
                 class="text item"
@@ -37,7 +37,7 @@
               </li>
             </ul>
           </el-tab-pane>
-          <el-tab-pane label="树状图" name="tree">
+          <el-tab-pane label="树形列表" name="tree">
             <div
               class="tree-container"
               v-if="!!Object.keys(allDependencies).length"
