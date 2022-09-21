@@ -5,6 +5,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import copy from 'rollup-plugin-copy'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -16,6 +17,12 @@ export default defineConfig({
     }),
     Components({
       resolvers: [ElementPlusResolver()],
+    }),
+    copy({
+      targets: [
+        { src: 'node_modules/libarchive.js/dist', dest: 'public/' },
+        { src: 'src/utils/libgit2_webworker.js', dest: 'public/dist/' },
+      ],
     }),
   ],
   resolve: {
